@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A beautiful viewer for your Instagram DM data export. Read your messages in style." />
+  <title>InstaView — Instagram DM Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=20261009" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>" />
+</head>
+<body>
+
+  <!-- ========== LANDING SCREEN ========== -->
+  <div id="landing-screen" class="landing-screen">
+    <div class="landing-card">
+      <div class="landing-logo">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#ig-gradient)" stroke-width="2"/>
+          <circle cx="12" cy="12" r="5" stroke="url(#ig-gradient)" stroke-width="2"/>
+          <circle cx="17.5" cy="6.5" r="1.5" fill="url(#ig-gradient)"/>
+          <defs>
+            <linearGradient id="ig-gradient" x1="2" y1="22" x2="22" y2="2">
+              <stop stop-color="#833AB4"/>
+              <stop offset="0.5" stop-color="#FD1D1D"/>
+              <stop offset="1" stop-color="#F77737"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <h1 class="gradient-text">InstaView</h1>
+      </div>
+      <p class="landing-subtitle">Your Instagram messages, beautifully reimagined</p>
+
+      <div id="folder-picker-area" class="folder-picker-area hidden">
+        <div class="folder-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+          </svg>
+        </div>
+        <p class="folder-picker-text">Drop your Instagram export folder here</p>
+        <p class="folder-picker-hint">or click the button below</p>
+      </div>
+
+      <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none" />
+      <button id="folder-picker-btn" class="folder-picker-btn hidden" onclick="document.getElementById('folder-input').click()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        Choose Folder
+      </button>
+
+      <label id="remember-export-option" class="remember-export-option hidden"><input id="remember-export" type="checkbox" /> Remember picked folder in this browser (up to 256 MB)</label>
+      <button id="restore-export-btn" type="button" class="ai-pill-btn secondary hidden">Open remembered folder</button>
+
+      <div id="landing-backups" class="backup-library hidden">
+        <div class="backup-library-heading"><strong>Backups</strong><button type="button" class="backup-refresh ai-pill-btn secondary">Refresh</button></div>
+        <div id="landing-backup-list" class="backup-list" aria-label="Choose an Instagram backup"></div>
+        <p class="backup-status settings-hint" role="status"></p>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading-state" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Parsing your messages...</p>
+        <p class="loading-detail" id="loading-detail">Looking for conversations</p>
+      </div>
+
+      <p class="landing-footer">Browsing and search stay on your device. AI requests send selected message excerpts to Google.</p>
+    </div>
+  </div>
+
+  <!-- ========== MAIN APP ========== -->
+  <div id="app-container" class="app-container hidden">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <h2 class="gradient-text sidebar-title">InstaView</h2>
+          <div class="sidebar-actions">
+            <button id="reels-vault-btn" class="icon-btn" title="Reels & Media Vault" aria-label="Reels & Media Vault">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="20" height="20" rx="5"/>
+                <polygon points="10 8 16 12 10 16 10 8"/>
+              </svg>
+            </button>
+            <button id="global-search-btn" class="icon-btn" title="Search all messages (Ctrl+K)" aria-label="Search all messages">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+            <button id="settings-btn" class="icon-btn" title="Settings & Appearance" aria-label="Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+              </svg>
+            </button>
+            <button id="theme-toggle" class="icon-btn" title="Quick Theme Toggle" aria-label="Toggle theme">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="sidebar-search-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input type="text" id="sidebar-search" class="sidebar-search" placeholder="Search conversations..." />
+        </div>
+        <div class="sidebar-controls">
+          <select id="sidebar-sort" class="sidebar-sort">
+            <option value="alpha">A → Z</option>
+            <option value="alpha-desc">Z → A</option>
+            <option value="messages">Most messages</option>
+          </select>
+          <span id="conversation-count" class="conversation-count">0 chats</span>
+        </div>
+        <p id="active-export-label" class="active-export-label">Local archive</p>
+        <div id="sidebar-backups" class="backup-library hidden">
+          <div class="backup-library-heading"><strong>Backups</strong><button type="button" class="backup-refresh ai-pill-btn secondary" title="Discover newly added backup folders">Refresh</button></div>
+          <div id="sidebar-backup-list" class="backup-list" aria-label="Choose an Instagram backup"></div>
+          <p class="backup-status settings-hint" role="status"></p>
+          <details class="backup-help"><summary>Add a newer backup</summary><p>Extract each HTML export into its own folder inside <strong>Instagram Backups</strong>, beside InstaView.pyw. Keep its messages and media together, then press Refresh. Folder names label the buttons. Your last choice opens automatically next time.</p><p>Each backup stays separate, with its own stars and reading positions.</p></details>
+        </div>
+        <div class="sidebar-width-control">
+          <span class="sidebar-width-label">Sidebar Width:</span>
+          <input type="range" id="sidebar-width-slider" class="sidebar-width-slider" min="180" max="480" value="320" title="Adjust Sidebar Width" />
+        </div>
+      </div>
+      <div id="sidebar-resizer" class="sidebar-resizer" title="Drag to resize sidebar"></div>
+      <div id="conversation-list" class="conversation-list">
+        <!-- Populated by JS -->
+      </div>
+    </aside>
+
+    <!-- CHAT AREA -->
+    <main id="chat-area" class="chat-area">
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state">
+        <div class="empty-state-icon">
+          <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+        </div>
+        <h3 class="empty-state-title">Your Messages</h3>
+        <p class="empty-state-text">Select a conversation from the sidebar to start reading</p>
+        <button type="button" id="archive-search-card" class="glowing-shadow" aria-label="Search all messages in this archive">
+          <span class="glowing-shadow-orbit" aria-hidden="true"></span>
+          <span class="glowing-shadow-content"><strong>Search your archive</strong><span>Find a word, a date, a memory.</span><small>On your device · Ctrl / ⌘ + K</small></span>
+        </button>
+      </div>
+
+      <!-- Chat Header -->
+      <div id="chat-header" class="chat-header hidden">
+        <button id="back-btn" class="icon-btn back-btn" title="Back" aria-label="Back to conversations">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <div id="chat-header-avatar" class="chat-header-avatar"></div>
+        <div class="chat-header-info">
+          <h3 id="chat-header-name" class="chat-header-name"></h3>
+          <span id="chat-header-detail" class="chat-header-detail"></span>
+        </div>
+        <div class="chat-header-actions">
+          <button id="starred-vault-btn" class="icon-btn" title="Starred Messages ⭐" aria-label="Starred Messages">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFC107" stroke="#FFC107" stroke-width="2">
+              <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9"/>
+            </svg>
+          </button>
+          <button id="chat-bookmark-btn" class="icon-btn hidden" title="Jump to bookmarked message" aria-label="Jump to bookmarked message">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+          </button>
+          <button id="chat-star-nav-btn" class="icon-btn hidden" title="Next starred message (N) · Shift+click / P for previous" aria-label="Cycle starred messages">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="7 9 12 4 17 9"/>
+              <polyline points="7 15 12 20 17 15"/>
+            </svg>
+          </button>
+          <button id="chat-first-msg-btn" class="icon-btn" title="Jump to first message" aria-label="Jump to first message">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="17 11 12 6 7 11"/>
+              <polyline points="17 18 12 13 7 18"/>
+            </svg>
+          </button>
+          <div class="date-picker-wrapper" style="position: relative; display: inline-block;">
+            <button id="chat-date-btn" class="icon-btn" title="Jump to date" aria-label="Jump to date">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </button>
+            <input type="date" id="chat-date-input" class="hidden-date-input" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; display: none;" />
+          </div>
+          <button id="toggle-extra-bars-btn" class="icon-btn" title="Toggle Toolbars & Scrubber" aria-label="Toggle Toolbars">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+              <polyline points="2 17 12 22 22 17"/>
+              <polyline points="2 12 12 17 22 12"/>
+            </svg>
+          </button>
+          <button id="focus-mode-btn" class="icon-btn" title="Focus Mode (Full screen messages)" aria-label="Focus Mode">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+          </button>
+          <button id="chat-search-btn" class="icon-btn" title="Search in chat" aria-label="Search in chat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+          </button>
+          <button id="chat-info-btn" class="icon-btn" title="View contact details & media" aria-label="View contact details & media">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+          </button>
+          <button id="chat-export-btn" class="icon-btn" title="Export Chat (PDF / Print)" aria-label="Export Chat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button id="stats-btn" class="icon-btn" title="Chat stats" aria-label="Chat statistics">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+          </button>
+          <button id="wrapped-btn" class="icon-btn wrapped-trigger-btn" title="Chat Wrapped & Dynamics" aria-label="Chat Wrapped">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button id="ai-drawer-btn" class="icon-btn ai-trigger-btn" title="AI Assistant & Analysis (Gemini)" aria-label="AI Assistant">
+            <span class="ai-btn-sparkle">✨</span>
+          </button>
+          <details id="chat-more-menu" class="chat-more-menu">
+            <summary class="icon-btn" aria-label="More conversation actions" title="More actions">••• <span>More</span></summary>
+            <div id="chat-more-panel" class="chat-more-panel">
+              <button type="button" id="pin-conversation-btn" class="icon-btn" aria-pressed="false">Pin conversation</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- In-Chat Search Bar -->
+      <div id="chat-search-bar" class="chat-search-bar hidden">
+        <input type="text" id="chat-search-input" class="chat-search-input" placeholder="Search messages..." aria-label="Search message text" maxlength="200" />
+        <span id="chat-search-results" class="chat-search-results"></span>
+        <button id="chat-search-prev" class="icon-btn hidden" title="Previous match" aria-label="Previous match">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="18 15 12 9 6 15"/>
+          </svg>
+        </button>
+        <button id="chat-search-next" class="icon-btn hidden" title="Next match" aria-label="Next match">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <button id="chat-search-close" class="icon-btn" aria-label="Close search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+        <details class="chat-search-options">
+          <summary>Filter & save searches</summary>
+          <div class="chat-search-fields">
+            <label>Sender<select id="chat-search-sender"><option value="">Everyone</option></select></label>
+            <label>Message type<select id="chat-search-type"><option value="all">All messages</option><option value="text">Text</option><option value="photo">Photos</option><option value="audio">Voice</option><option value="reel">Reels</option><option value="link">Links</option><option value="starred">Starred</option></select></label>
+            <label>From<input id="chat-search-from" type="date" /></label>
+            <label>Through<input id="chat-search-to" type="date" /></label>
+            <label>Saved searches<select id="chat-saved-searches"><option value="">Saved searches</option></select></label>
+            <button type="button" id="chat-save-search-btn" class="ai-pill-btn secondary">Save search</button>
+            <button type="button" id="chat-remove-search-btn" class="ai-pill-btn secondary">Remove saved search</button>
+            <button type="button" id="chat-reset-search-btn" class="ai-pill-btn secondary">Clear filters</button>
+          </div>
+        </details>
+      </div>
+
+      <!-- Conversation Memory & Milestones Banner -->
+      <div id="chat-memory-banner" class="chat-memory-banner hidden">
+        <span class="memory-banner-icon">✨</span>
+        <span id="chat-memory-text" class="chat-memory-text">Chatting since 2024 • 10,000 messages</span>
+      </div>
+
+      <!-- In-Chat Quick Filter Pills -->
+      <div id="chat-filter-bar" class="chat-filter-bar hidden">
+        <button class="filter-pill active" data-type="all">All 💬</button>
+        <button class="filter-pill" data-type="photo">Photos 📷</button>
+        <button class="filter-pill" data-type="reel">Reels 🎬</button>
+        <button class="filter-pill" data-type="audio">Voice 🎙️</button>
+        <button class="filter-pill" data-type="link">Links 🔗</button>
+        <button class="filter-pill" data-type="starred">Starred ⭐</button>
+      </div>
+
+      <!-- Timeline Scrubber Bar -->
+      <div id="timeline-scrubber-bar" class="timeline-scrubber-bar hidden">
+        <div id="timeline-scrubber-track" class="timeline-scrubber-track">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Interactive Range Selection Banner -->
+      <div id="range-select-banner" class="range-select-banner hidden">
+        <div class="range-banner-content">
+          <span class="range-banner-icon">📍</span>
+          <div class="range-banner-text">
+            <strong id="range-banner-title">Select Range in Chat</strong>
+            <span id="range-banner-desc">Click first message to start, then click another message to finish.</span>
+          </div>
+        </div>
+        <div class="range-banner-actions">
+          <button id="range-banner-cancel" class="range-btn cancel">Cancel</button>
+          <button id="range-banner-done" class="range-btn confirm" disabled>Summarize (0 msgs)</button>
+        </div>
+      </div>
+
+      <!-- Messages Container & Details Panel Wrapper -->
+      <div class="chat-body-wrap" style="display: flex; flex: 1; min-height: 0; width: 100%; overflow: hidden; position: relative;">
+        <div id="messages-container" class="messages-container hidden">
+          <!-- Messages populated by JS -->
+        </div>
+
+        <!-- Floating Quick-Nav Widget -->
+        <div id="quick-nav-widget" class="quick-nav-widget hidden">
+          <button id="qn-top" class="quick-nav-btn" title="Jump to Beginning" aria-label="Jump to top">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="18 15 12 9 6 15"/>
+              <line x1="12" y1="9" x2="12" y2="21"/>
+            </svg>
+          </button>
+          <button id="qn-date" class="quick-nav-btn" title="Jump to Date" aria-label="Jump to date">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </button>
+          <button id="qn-bottom" class="quick-nav-btn" title="Jump to Latest" aria-label="Jump to bottom">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Contact Info Sidebar Drawer -->
+        <aside id="contact-info-panel" class="contact-info-panel hidden">
+          <div class="info-panel-header">
+            <h3>Contact Details</h3>
+            <button id="info-panel-close" class="icon-btn" aria-label="Close details">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div class="info-panel-body">
+            <div class="info-avatar-wrap">
+              <div id="info-avatar" class="info-avatar"></div>
+              <h3 id="info-name"></h3>
+              <span id="info-status"></span>
+            </div>
+
+            <!-- Media Tabs -->
+            <div class="info-tabs">
+              <button class="info-tab-btn active" data-tab="reels">🎬 Reels</button>
+              <button class="info-tab-btn" data-tab="photos">📷 Photos</button>
+              <button class="info-tab-btn" data-tab="audio">🎙️ Voice</button>
+              <button class="info-tab-btn" data-tab="links">🔗 Links</button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="tab-content active" id="tab-reels">
+              <div id="info-reels-grid" class="info-reels-grid"></div>
+              <div id="info-reels-empty" class="tab-empty hidden">No shared reels</div>
+            </div>
+            <div class="tab-content" id="tab-photos">
+              <div id="info-photos-grid" class="info-photos-grid"></div>
+              <div id="info-photos-empty" class="tab-empty hidden">No shared photos</div>
+            </div>
+            <div class="tab-content" id="tab-audio">
+              <div id="info-audio-list" class="info-audio-list"></div>
+              <div id="info-audio-empty" class="tab-empty hidden">No voice notes</div>
+            </div>
+            <div class="tab-content" id="tab-links">
+              <div id="info-links-list" class="info-links-list"></div>
+              <div id="info-links-empty" class="tab-empty hidden">No shared links</div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Draggable Resizer for AI Panel -->
+        <div id="ai-resizer" class="ai-resizer hidden" title="Drag to resize AI panel (Double-click to reset)"></div>
+
+        <!-- AI Assistant Side Panel -->
+        <aside id="ai-drawer" class="ai-drawer hidden">
+          <div class="ai-drawer-header">
+            <div class="ai-drawer-title-wrap">
+              <div class="ai-drawer-glow-icon">✨</div>
+              <div>
+                <h3 class="ai-drawer-title">InstaView AI</h3>
+                <span class="ai-drawer-subtitle">Local retrieval · <span id="ai-model-badge">Gemini</span></span>
+              </div>
+            </div>
+            <div class="ai-header-btns">
+              <button id="ai-layout-toggle-btn" class="icon-btn" title="Toggle Layout: Side-by-Side / 50-50 / Floating" aria-label="Toggle Layout Mode">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="12" y1="3" x2="12" y2="21"/>
+                </svg>
+              </button>
+              <button id="ai-settings-quick-btn" class="icon-btn" title="AI Settings / API Key" aria-label="AI Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                </svg>
+              </button>
+              <button id="ai-drawer-close" class="icon-btn" aria-label="Close AI Assistant">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- API Key Setup Banner if missing -->
+          <div id="ai-key-banner" class="ai-key-banner hidden">
+            <span>Local retrieval works now. Add a Gemini key to generate answers.</span>
+            <button id="ai-key-banner-btn" class="ai-pill-btn">Settings</button>
+          </div>
+
+          <!-- Navigation Tabs -->
+          <div class="ai-tabs-nav" role="tablist" aria-label="AI tools">
+            <button id="ai-tab-ask" class="ai-tab-btn active" data-tab="ask" role="tab" aria-selected="true" aria-controls="ai-tab-ask-content">Ask & Search</button>
+            <button id="ai-tab-range" class="ai-tab-btn" data-tab="range" role="tab" aria-selected="false" tabindex="-1" aria-controls="ai-tab-range-content">Range Summary</button>
+            <button id="ai-tab-timeline" class="ai-tab-btn" data-tab="timeline" role="tab" aria-selected="false" tabindex="-1" aria-controls="ai-tab-timeline-content">Milestones</button>
+          </div>
+
+          <!-- Message Scope Selector -->
+          <div class="ai-scope-bar">
+            <span class="ai-scope-label">Scope:</span>
+            <div id="ai-scope-selector" class="ai-scope-pills">
+              <button type="button" class="ai-scope-pill active" data-scope="rag" aria-pressed="true" title="Search the full chat locally and send only relevant excerpts">Smart RAG</button>
+              <button type="button" class="ai-scope-pill" data-scope="range" aria-pressed="false" title="Use current selected range in chat">Range</button>
+              <button type="button" class="ai-scope-pill" data-scope="recent" aria-pressed="false" title="Use a bounded sample from the latest 1,000 messages">Recent 1k</button>
+            </div>
+          </div>
+
+          <div class="ai-evidence-toolbar">
+            <button type="button" id="ai-rag-status-chip" class="ai-rag-status-chip hidden" title="Inspect the excerpts supplied to AI" aria-controls="ai-context-panel" aria-live="polite"></button>
+            <button type="button" id="ai-cancel-btn" class="ai-pill-btn secondary hidden">Cancel request</button>
+          </div>
+          <p id="ai-request-status" class="ai-request-status" role="status">Ready · local search or AI answer</p>
+          <div id="ai-recovery-banner" class="ai-recovery-banner hidden">
+            <p id="ai-recovery-text"></p><span id="ai-cooldown-clock" role="timer" aria-live="off"></span>
+            <button type="button" id="ai-retry-btn" class="ai-pill-btn secondary">Ask AI using these excerpts</button>
+          </div>
+          <section id="ai-context-panel" class="ai-context-panel hidden" aria-label="Retrieved message evidence">
+            <div class="ai-context-header"><strong>Retrieved evidence</strong><button type="button" id="ai-context-close" class="icon-btn" aria-label="Close evidence preview">×</button></div>
+            <div id="ai-context-body" class="ai-context-body"></div>
+          </section>
+
+          <!-- Tab 1: Ask & Search -->
+          <div id="ai-tab-ask-content" class="ai-tab-content active" role="tabpanel" aria-labelledby="ai-tab-ask">
+            <div class="ai-quick-chips">
+              <button type="button" class="ai-chip" data-prompt="When did we discuss ">Find a message</button>
+              <button type="button" class="ai-chip" data-action="range">Summarize a period</button>
+              <button type="button" class="ai-chip" data-prompt="Compare what each person said about ">Compare statements</button>
+            </div>
+            <div id="ai-chat-thread" class="ai-chat-thread">
+              <div class="ai-msg ai-msg-bot">
+                <p>Find a moment, then review its sources.</p>
+                <p class="ai-subhint">Find messages works locally. Ask AI sends selected excerpts to Google.</p>
+              </div>
+            </div>
+            <form id="ai-chat-form" class="ai-chat-form">
+              <textarea id="ai-chat-input" class="ai-chat-input" placeholder="Find or ask about this chat…" aria-label="Question about this chat" maxlength="600" rows="1"></textarea>
+              <button type="button" id="ai-find-local-btn" class="ai-pill-btn secondary">Find messages</button>
+              <button type="submit" id="ai-chat-send" class="ai-send-btn" title="Ask AI (Enter)" aria-label="Ask AI using selected excerpts">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                <span>Ask AI</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Tab 2: Range Summarizer -->
+          <div id="ai-tab-range-content" class="ai-tab-content hidden" role="tabpanel" aria-labelledby="ai-tab-range">
+            <div class="ai-range-box">
+              <div class="ai-range-header">
+                <span class="ai-section-label">Select Range:</span>
+                <button id="ai-select-chat-range-btn" class="ai-pill-btn secondary" type="button">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                  Select in Chat
+                </button>
+              </div>
+              <div class="ai-range-pickers">
+                <div class="ai-picker-field">
+                  <label for="ai-range-from">From:</label>
+                  <input type="datetime-local" id="ai-range-from" class="ai-datetime-input" />
+                </div>
+                <div class="ai-picker-field">
+                  <label for="ai-range-to">To:</label>
+                  <input type="datetime-local" id="ai-range-to" class="ai-datetime-input" />
+                </div>
+              </div>
+              <div id="ai-range-status" class="ai-range-status">
+                <span id="ai-range-count-label">No range selected</span>
+              </div>
+
+              <div class="ai-range-presets-title">Summary Focus:</div>
+              <div class="ai-range-presets">
+                <button type="button" class="ai-preset-btn active" data-preset="perspective">⚖️ What I Said vs. What They Said</button>
+                <button type="button" class="ai-preset-btn" data-preset="conclusion">🎯 Conclusions & Outcomes</button>
+                <button type="button" class="ai-preset-btn" data-preset="conflict">🕊️ Dispute / Tone Breakdown</button>
+                <button type="button" class="ai-preset-btn" data-preset="brief">⚡ Quick Bullet Summary</button>
+              </div>
+
+              <button id="ai-run-range-btn" class="ai-action-btn" type="button" disabled>
+                <span>Summarize Selected Range</span>
+              </button>
+            </div>
+
+            <!-- Range Results Box -->
+            <div id="ai-range-results" class="ai-range-results hidden">
+              <div class="ai-range-results-header">
+                <span class="ai-results-tag">AI Summary</span>
+                <button id="ai-copy-summary-btn" class="icon-btn small" title="Copy summary" aria-label="Copy summary">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+              </div>
+              <div id="ai-range-results-body" class="ai-results-body markdown-body"></div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Timeline & Milestones -->
+          <div id="ai-tab-timeline-content" class="ai-tab-content hidden" role="tabpanel" aria-labelledby="ai-tab-timeline">
+            <div class="ai-timeline-hero">
+              <p>Generate a chronological story of this relationship, detailing key chapters, milestone conversations, and how dynamics evolved.</p>
+              <button id="ai-gen-timeline-btn" class="ai-action-btn" type="button">
+                <span>Generate Relationship Timeline</span>
+              </button>
+            </div>
+            <div id="ai-timeline-results" class="ai-timeline-results hidden"></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- Stats Panel Overlay -->
+    <div id="stats-panel" class="stats-panel hidden">
+      <div class="stats-panel-content">
+        <div class="stats-header">
+          <h3>Conversation Stats</h3>
+          <button id="stats-close" class="icon-btn" aria-label="Close stats">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div id="stats-body" class="stats-body">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Lightbox -->
+    <div id="lightbox" class="lightbox hidden">
+      <button id="lightbox-download" class="lightbox-action" title="Download image" aria-label="Download image">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+      <button id="lightbox-close" class="lightbox-close" aria-label="Close image">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <img id="lightbox-img" class="lightbox-img" src="" alt="Full size image" />
+    </div>
+
+    <!-- Reels & Media Vault Modal -->
+    <div id="reels-vault-modal" class="modal-overlay hidden">
+      <div class="modal-card reels-vault-card">
+        <div class="modal-header">
+          <div class="vault-title-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="5"/>
+              <polygon points="10 8 16 12 10 16 10 8"/>
+            </svg>
+            <h3>Reels & Shared Media Vault</h3>
+          </div>
+          <button id="vault-close" class="icon-btn" aria-label="Close Vault">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="vault-toolbar">
+          <div class="vault-tabs">
+            <button class="vault-tab active" data-filter="all">All Media</button>
+            <button class="vault-tab" data-filter="reel">🎬 Reels</button>
+            <button class="vault-tab" data-filter="photo">📷 Photos</button>
+            <button class="vault-tab" data-filter="audio">🎙️ Voice Notes</button>
+          </div>
+          <input type="text" id="vault-search-input" class="vault-search-input" placeholder="Search captions, accounts..." />
+        </div>
+        <div id="vault-content-grid" class="vault-content-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Reel Video Modal Previewer -->
+    <div id="reel-modal" class="modal-overlay hidden">
+      <div class="modal-card reel-modal-card">
+        <button id="reel-modal-close" class="modal-close-btn" aria-label="Close Reel">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+        <div id="reel-modal-body" class="reel-modal-body">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Message Search Modal -->
+    <div id="global-search-modal" class="modal-overlay hidden">
+      <div class="modal-card global-search-card">
+        <div class="modal-header">
+          <div class="vault-title-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <h3>Search All Messages</h3>
+          </div>
+          <button id="global-search-close" class="icon-btn" aria-label="Close search">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="global-search-bar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="global-search-input" placeholder="Search across every conversation…" autocomplete="off" />
+          <span id="global-search-count"></span>
+        </div>
+        <div id="global-search-results" class="global-search-results"></div>
+      </div>
+    </div>
+
+    <!-- Settings & Appearance Modal -->
+    <div id="settings-modal" class="modal-overlay hidden">
+      <div class="modal-card settings-modal-card">
+        <div class="modal-header">
+          <div class="vault-title-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
+            <h3>Settings & Preferences</h3>
+          </div>
+          <button id="settings-close" class="icon-btn" aria-label="Close settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="settings-modal-body">
+
+          <!-- Theme Section -->
+          <div class="settings-section">
+            <label class="settings-section-title">Color Palette Theme</label>
+            <div class="theme-swatches-grid">
+              <button class="theme-swatch-card" data-theme="auto">
+                <span class="swatch-preview swatch-auto"></span>
+                <span class="swatch-name">🌗 Auto</span>
+              </button>
+              <button class="theme-swatch-card" data-theme="dark">
+                <span class="swatch-preview swatch-dark"></span>
+                <span class="swatch-name">🌙 IG Dark</span>
+              </button>
+              <button class="theme-swatch-card" data-theme="sage">
+                <span class="swatch-preview swatch-sage"></span>
+                <span class="swatch-name">🌿 Soft Sage</span>
+              </button>
+              <button class="theme-swatch-card" data-theme="sunset">
+                <span class="swatch-preview swatch-sunset"></span>
+                <span class="swatch-name">🌆 Sunset</span>
+              </button>
+              <button class="theme-swatch-card" data-theme="pastel">
+                <span class="swatch-preview swatch-pastel"></span>
+                <span class="swatch-name">🌸 Pastel Bloom</span>
+              </button>
+              <button class="theme-swatch-card active" data-theme="light">
+                <span class="swatch-preview swatch-light"></span>
+                <span class="swatch-name">🤍 Soft Cream</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Typography Section -->
+          <div class="settings-section reader-settings">
+            <h4 class="settings-section-title">Reading comfort</h4>
+            <label>Message size <output id="reader-font-size-label">14px</output><input type="range" id="reader-font-size" min="12" max="20" value="14" /></label>
+            <label>Message spacing<select id="reader-spacing"><option value="compact">Compact</option><option value="comfortable" selected>Comfortable</option><option value="roomy">Roomy</option></select></label>
+            <label>Reading width<select id="reader-width"><option value="focused">Focused</option><option value="wide">Wide</option></select></label>
+            <details class="keyboard-help"><summary>Keyboard shortcuts</summary><p>Ctrl / ⌘ + K: search archive · /: search chat · ↑ / ↓: switch chats · T: first message · B: bottom · F: focus mode · N / P: next / previous star · Esc: close overlays.</p></details>
+          </div>
+          <div class="settings-section">
+            <h4 class="settings-section-title">Saved archive data</h4>
+            <p id="archive-profile-label" class="settings-hint">Open an export to manage saved data.</p>
+            <p class="settings-hint">Stars, notes, collections, pinned chats and saved searches belong to this export. Backups include your private notes; keep them somewhere you trust. API keys and original message text are excluded. Restore merges saved data for a matching export.</p>
+            <button type="button" id="archive-backup-btn" class="ai-pill-btn secondary">Download backup</button>
+            <button type="button" id="archive-restore-btn" class="ai-pill-btn secondary">Restore backup</button>
+            <input id="archive-restore-input" type="file" accept=".json,application/json" hidden />
+            <details class="legacy-import-help"><summary>Stars from older versions</summary><p class="settings-hint">Older stars have positions only. They cannot be checked against the original message. Import them into this export only if it is the same archive, then review them in Stars. The original saved positions are retained.</p>
+            <button type="button" id="import-legacy-stars-btn" class="ai-pill-btn secondary hidden">Import legacy positions into this export</button></details>
+          </div>
+          <div class="settings-section">
+            <label class="settings-section-title">Typography Font</label>
+            <div class="font-cards-grid">
+              <button class="font-preview-card active" data-font="comfortaa">
+                <span class="font-title font-title-comfortaa">✨ Comfortaa</span>
+                <span class="font-sample font-title-comfortaa">The quick brown fox jumps...</span>
+              </button>
+              <button class="font-preview-card" data-font="inter">
+                <span class="font-title font-title-inter">🔹 Inter</span>
+                <span class="font-sample font-title-inter">The quick brown fox jumps...</span>
+              </button>
+              <button class="font-preview-card" data-font="outfit">
+                <span class="font-title font-title-outfit">💎 Outfit</span>
+                <span class="font-sample font-title-outfit">The quick brown fox jumps...</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Chat Wallpaper Section -->
+          <div class="settings-section">
+            <label class="settings-section-title">Chat Background Wallpaper</label>
+            <div class="wallpaper-options-grid">
+              <button class="wallpaper-card active" data-wallpaper="none">
+                <span class="wallpaper-preview wp-none">Solid</span>
+                <span class="wallpaper-name">Default</span>
+              </button>
+              <button class="wallpaper-card" data-wallpaper="aurora">
+                <span class="wallpaper-preview wp-aurora"></span>
+                <span class="wallpaper-name">Aurora</span>
+              </button>
+              <button class="wallpaper-card" data-wallpaper="glass">
+                <span class="wallpaper-preview wp-glass"></span>
+                <span class="wallpaper-name">Glass Mesh</span>
+              </button>
+              <button class="wallpaper-card" data-wallpaper="sunburst">
+                <span class="wallpaper-preview wp-sunburst"></span>
+                <span class="wallpaper-name">Sunburst</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- AI & Gemini API Section -->
+          <div class="settings-section">
+            <label class="settings-section-title">Remembered export</label>
+            <p class="settings-hint">The native launcher already opens its export folder automatically. For folder-picker mode, you can opt in to a local browser copy up to 256 MB. Browser storage can be cleared or evicted.</p>
+            <button type="button" id="clear-export-cache-btn" class="ai-pill-btn secondary">Forget browser copy</button>
+            <span id="export-cache-status" class="settings-hint" role="status"></span>
+          </div>
+          <div class="settings-section">
+            <label class="settings-section-title">✨ AI Assistant · local RAG + Gemini</label>
+            <p class="settings-hint">Retrieval runs locally. When you request AI analysis, selected message excerpts and your key are sent to Google over HTTPS. Your key is saved in this browser's local storage, which is not encrypted. Sources help you check answers; AI can still make mistakes.</p>
+            <div class="ai-key-input-wrap">
+              <input type="password" id="gemini-api-key-input" class="settings-input" placeholder="Enter Gemini API Key (AIzaSy...)" autocomplete="off" />
+              <button type="button" id="toggle-key-visibility-btn" class="icon-btn" title="Show/Hide Key" aria-label="Toggle Key Visibility">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+              <button type="button" id="test-gemini-key-btn" class="ai-test-key-btn">Test Key</button>
+            </div>
+            <div class="ai-key-help-row">
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="ai-key-link">Get free Gemini API Key from Google AI Studio ↗</a>
+              <span id="gemini-key-status" class="gemini-key-status"></span>
+            </div>
+            <div class="ai-model-status-row">
+              <label for="gemini-model-select" class="ai-model-status-label">Preferred model:</label>
+              <select id="gemini-model-select" class="settings-input" aria-label="Preferred Gemini model"></select>
+            </div>
+            <div class="ai-model-status-row">
+              <span class="ai-model-status-label">Active Model:</span>
+              <span id="gemini-active-model-name" class="ai-model-name-pill">gemini-2.5-flash (1M context)</span>
+              <button type="button" id="refresh-gemini-models-btn" class="ai-pill-btn secondary" title="Discover live available models & context windows">↻ Refresh Models</button>
+            </div>
+            <div id="gemini-fallback-chain-preview" class="gemini-fallback-chain-preview"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <!-- Starred Messages Vault Modal -->
+    <div id="starred-modal" class="modal-overlay hidden">
+      <div class="modal-card starred-modal-card">
+        <div class="modal-header">
+          <div class="vault-title-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFC107" stroke="#FFC107" stroke-width="2">
+              <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9"/>
+            </svg>
+            <h3>Starred Messages</h3>
+          </div>
+          <button id="starred-close" class="icon-btn" aria-label="Close Starred Messages">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <label class="starred-collection-control">Collection <select id="starred-collection-filter"><option value="">All collections</option></select></label>
+        <div id="starred-content-list" class="starred-content-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Wrapped & Dynamics Modal (Spotify Wrapped Style) -->
+    <div id="wrapped-modal" class="modal-overlay hidden">
+      <div class="modal-card wrapped-card">
+        <div class="wrapped-header">
+          <div class="vault-title-wrap">
+            <span class="wrapped-sparkle-icon">✨</span>
+            <h3>Chat Wrapped &amp; Dynamics</h3>
+          </div>
+          <button id="wrapped-close" class="icon-btn" aria-label="Close Wrapped">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Story Progress Bars across top -->
+        <div id="wrapped-progress-bars" class="wrapped-progress-bars">
+          <div class="wrapped-bar-segment active"><div class="wrapped-bar-fill"></div></div>
+          <div class="wrapped-bar-segment"><div class="wrapped-bar-fill"></div></div>
+          <div class="wrapped-bar-segment"><div class="wrapped-bar-fill"></div></div>
+          <div class="wrapped-bar-segment"><div class="wrapped-bar-fill"></div></div>
+          <div class="wrapped-bar-segment"><div class="wrapped-bar-fill"></div></div>
+        </div>
+
+        <!-- Slides Viewport -->
+        <div id="wrapped-slides-viewport" class="wrapped-slides-viewport">
+          <div class="wrapped-loading">
+            <div class="loading-spinner"></div>
+            <p>Analyzing conversation dynamics...</p>
+          </div>
+        </div>
+
+        <!-- Wrapped Controls Footer -->
+        <div class="wrapped-footer">
+          <button id="wrapped-prev-btn" class="wrapped-nav-btn" aria-label="Previous slide">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="wrapped-footer-center">
+            <button id="wrapped-toggle-report-btn" class="wrapped-pill-btn">View Detailed Report</button>
+          </div>
+          <button id="wrapped-next-btn" class="wrapped-nav-btn" aria-label="Next slide">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+
+        <!-- Detailed Full Text Report Overlay (toggleable inside wrapped) -->
+        <div id="wrapped-report-overlay" class="wrapped-report-overlay hidden">
+          <div class="wrapped-report-header">
+            <h4>Detailed Dynamics &amp; Insights Report</h4>
+            <button id="wrapped-report-close-btn" class="icon-btn" aria-label="Back to story">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="wrapped-report-body" class="wrapped-report-body markdown-body"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/parser.js?v=20260823"></script>
+  <script src="js/archive.js?v=20261001b"></script>
+  <script src="js/rag.js?v=20261001"></script>
+  <script src="js/ai-client.js?v=20261009"></script>
+  <script src="js/circle-menu.js?v=20261001"></script>
+  <script src="js/export-cache.js?v=20261001"></script>
+  <script src="js/export-library.js?v=20261005"></script>
+  <script src="js/app.js?v=20261009"></script>
+</body>
+</html>

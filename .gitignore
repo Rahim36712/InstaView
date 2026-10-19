@@ -1,0 +1,47 @@
+# ==============================================================================
+# InstaView — .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# CRITICAL: Personal Instagram Data Export Folders & Files
+# These contain personal direct messages, photos, videos, audios, and logs.
+# NEVER COMMIT OR PUSH THESE TO A PUBLIC REPOSITORY!
+# ------------------------------------------------------------------------------
+your_instagram_activity/
+files/
+Instagram Backups/
+logged_information/
+preferences/
+security_and_login_information/
+apps_and_websites_off_of_instagram/
+start_here.html
+
+# ------------------------------------------------------------------------------
+# Python & Runtime Cache
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+instaview.log
+
+# ------------------------------------------------------------------------------
+# OS & Editor Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# ------------------------------------------------------------------------------
+# Local Environment & Agent Logs
+# ------------------------------------------------------------------------------
+.system_generated/
+.gemini/
+*.tmp
+*.bak
